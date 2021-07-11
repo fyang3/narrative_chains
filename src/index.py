@@ -7,7 +7,7 @@ from collections import defaultdict
 from pymagnitude import Magnitude
 
 # set constants
-INPUT_FILE = "data/input1.txt"
+INPUT_FILE = "C:\\Users\\12073\\Documents\\GitHub\\gender_analysis\\corpus_analysis\\testing\\test_data\\sample_novels\\texts\\austen_emma.txt"
 OUTPUT_FILE = "export.txt"
 MAX_LENGTH = 2_000_000
 CHUNK_LENGTH = 100_000
@@ -19,7 +19,7 @@ if "--train" in sys.argv:
 
     # read file and clean input
     with open(INPUT_FILE) as f:
-        text = " ".join(f.readlines()[13:-7])
+        text = " ".join(f.readlines())
 
     # identify events
     ordered = list()
@@ -36,7 +36,7 @@ if "--train" in sys.argv:
 
         # resolve entities and gramatically parse 
         print("parsing chunk")
-        nlp = spacy.load("en")
+        nlp = spacy.load("en_core_web_sm")
         neuralcoref.add_to_pipe(nlp)
         corpus = nlp(chunk)
 

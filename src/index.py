@@ -22,14 +22,16 @@ if "--train" in sys.argv:
         text = " ".join(f.readlines())
 
     # identify events
-    ordered = list()
+
+    # initialization: need to expand on the events: currently the chains are not super useful
+    ordered = list() # a list of tuples of (verb,dependency,dependency_type), currently don't have separation of the same character?
     subjects = defaultdict(lambda: defaultdict(int))
     objects = defaultdict(lambda: defaultdict(int))
     total = 0
 
     # chunking text and parsing
     spacy.prefer_gpu()
-    
+    print("\ntotal number of chunks: ", int(min(MAX_LENGTH,len(text))/CHUNK_LENGTH))
     for i in range(0, MAX_LENGTH, CHUNK_LENGTH):
         chunk = text[i:i + CHUNK_LENGTH]
         print("\nchunk ", int(i / CHUNK_LENGTH))
@@ -38,19 +40,19 @@ if "--train" in sys.argv:
         print("parsing chunk")
         nlp = spacy.load("en_core_web_sm")
         neuralcoref.add_to_pipe(nlp)
-        corpus = nlp(chunk)
+        corpus = nlp(chunk) # spacy document object
 
         print("mining events")
         for token in corpus:
             if token.pos == spacy.symbols.VERB:
                 for argument in token.children:
                     # resolve argument coreference entity
-                    if argument._.in_coref: esolved = argument._.coref_clusters[0].main.text
+                    if argument._.in_coref: resolved = argument._.coref_clusters[0].main.text
                     else: resolved = argument.text
-
+                    # dependency parsing: count the sharing dependencies
                     if argument.dep_ in {"nsubj", "nsubjpass"}:
-                        subjects[token.lemma_.lower()][argument.text.lower()] += 1
-                        ordered.append((token.lemma_, resolved.lower(), argument.dep_))
+                        subjects[token.lemma_.lower()][argument.text.lower()] += 1 # updating subject dict
+                        ordered.append((token.lemma_, resolved.lower(), argument.dep_)) #ordered event chains?
                         total += 1
                     elif argument.dep_ in {"dobj", "iobj", "pobj", "obj"}:
                         objects[token.lemma_.lower()][argument.text.lower()] += 1
@@ -66,7 +68,7 @@ if "--train" in sys.argv:
     coreference = defaultdict(lambda: defaultdict(int))
     total_coreference = 0
 
-    for verb1 in verbs:
+    for verb1 in verbs:                                     # don't completely understand the loop
         for verb2 in verbs:
             verb1_subjects = set(subjects[verb1].keys())
             for argument in subjects[verb2]:
@@ -97,7 +99,7 @@ if "--train" in sys.argv:
         pickle.dump(model, file)
     print("successfully saved to model.pickle")
 
-else:
+else: #evaluation
     with open("model.pickle", "rb") as file:
         class Model: pass
         model = pickle.load(file)
@@ -125,7 +127,7 @@ def pmi(event1, event2):
     denominator = math.exp(math.log(marginal1) + math.log(marginal2))
     return math.log(numerator / denominator)
 
-# chain prediction
+# chain prediction -> start here
 def predict(chain, embedding=False, interpolation=False):
     if embedding or interpolation:
         vectors = Magnitude('GoogleNews-vectors-negative300.magnitude')
